@@ -29,7 +29,17 @@ class MorphTo extends EloquentMorphTo
 
         $key = $instance->getKeyName();
 
-        $query = $instance->newQuery();
+        // Copied this block from the parent method, based on the bug report at
+        // https://github.com/mongodb/laravel-mongodb/issues/1361
+        $query = $this->replayMacros($instance->newQuery())
+            ->mergeConstraintsFrom($this->getQuery())
+            ->with(array_merge(
+                $this->getQuery()->getEagerLoads(),
+                (array) ($this->morphableEagerLoads[get_class($instance)] ?? [])
+            ))
+            ->withCount(
+                (array) ($this->morphableEagerLoadCounts[get_class($instance)] ?? [])
+            );
 
         return $query->whereIn($key, $this->gatherKeysByType($type, $instance->getKeyType()))->get();
     }
